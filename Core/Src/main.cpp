@@ -28,7 +28,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "enc.hpp"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,7 +60,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+Encoder enc(4096);
 /* USER CODE END 0 */
 
 /**
@@ -102,7 +102,7 @@ int main(void) {
     MX_USART2_UART_Init();
     MX_I2C2_Init();
     /* USER CODE BEGIN 2 */
-    
+    enc.init();
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -111,6 +111,11 @@ int main(void) {
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
+        enc.update();
+        char msg[1000];
+        uint16_t len = sprintf(msg, "Encoder: %d\n", enc.getVal(1));
+        HAL_UART_Transmit_DMA(&huart2, (uint8_t *)msg, len);
+        HAL_Delay(100);
     }
     /* USER CODE END 3 */
 }
