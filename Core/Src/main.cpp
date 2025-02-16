@@ -28,6 +28,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "enc.hpp"
 #include "math.hpp"
 /* USER CODE END Includes */
 
@@ -61,6 +62,7 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 asm(".global _printf_float");
+Encoder enc(4096);
 /* USER CODE END 0 */
 
 /**
@@ -104,6 +106,7 @@ int main(void) {
     /* USER CODE BEGIN 2 */
     fastSinfInit();
     fastCosfInit();
+    enc.init();
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -112,6 +115,11 @@ int main(void) {
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
+        enc.update();
+        char msg[1000];
+        uint16_t len = sprintf(msg, "Encoder: %d\n", enc.getVal(1));
+        HAL_UART_Transmit_DMA(&huart2, (uint8_t *)msg, len);
+        HAL_Delay(100);
     }
     /* USER CODE END 3 */
 }
