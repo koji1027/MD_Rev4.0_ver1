@@ -28,7 +28,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "math.hpp"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,7 +60,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+asm(".global _printf_float");
 /* USER CODE END 0 */
 
 /**
@@ -102,7 +102,8 @@ int main(void) {
     MX_USART2_UART_Init();
     MX_I2C2_Init();
     /* USER CODE BEGIN 2 */
-    
+    fastSinfInit();
+    fastCosfInit();
     /* USER CODE END 2 */
 
     /* Infinite loop */
