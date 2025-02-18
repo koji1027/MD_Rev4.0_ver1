@@ -28,8 +28,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "driver.hpp"
 #include "enc.hpp"
 #include "math.hpp"
+#include "motor.hpp"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,7 +41,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define ENC_RES 4096
+#define BATTERY_VOLTAGE 8.0f
+#define MAX_DUTY 1000
+#define MOTOR_POLES_NUM 7
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -62,7 +67,7 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 asm(".global _printf_float");
-Encoder enc(4096);
+Motor motor(ENC_RES, BATTERY_VOLTAGE, MAX_DUTY, MOTOR_POLES_NUM);
 /* USER CODE END 0 */
 
 /**
@@ -106,7 +111,9 @@ int main(void) {
     /* USER CODE BEGIN 2 */
     fastSinfInit();
     fastCosfInit();
-    enc.init();
+
+    motor.init();
+    motor.driver->freeWheel();
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -115,11 +122,16 @@ int main(void) {
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
-        enc.update();
-        char msg[1000];
-        uint16_t len = sprintf(msg, "Encoder: %d\n", enc.getVal(1));
+        float elecAngle = motor.getElecAngle();
+        uint16_t encVal = motor.enc->getVal(1);
+        float phase = motor.getPhase();
+        // motor.invertTurn();
+        motor.driver->driveSinWave(1.0f, phase);
+
+        char msg[200];
+        uint8_t len = sprintf(msg, "encVal: %d, elecAngle: %f\n", encVal, elecAngle);
         HAL_UART_Transmit_DMA(&huart2, (uint8_t *)msg, len);
-        HAL_Delay(100);
+        HAL_Delay(1);
     }
     /* USER CODE END 3 */
 }

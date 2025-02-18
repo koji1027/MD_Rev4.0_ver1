@@ -15,7 +15,7 @@ void Encoder::update() {
     uint8_t data[2];
     HAL_I2C_Mem_Read(&hi2c2, ENC_ADDR << 1, ENC_REG_RAW_ANGLE, I2C_MEMADD_SIZE_8BIT, data, 2, 1);
     rawVal = (data[0] << 8) | data[1];
-    val = ((rawVal + offsetVal) % RESOLUTION + RESOLUTION) % RESOLUTION;
+    val = RESOLUTION - ((rawVal + offsetVal) % RESOLUTION + RESOLUTION) % RESOLUTION - 1;
 }
 
 void Encoder::setOffset(uint16_t offsetVal) {
@@ -23,6 +23,7 @@ void Encoder::setOffset(uint16_t offsetVal) {
 }
 
 uint16_t Encoder::getVal(uint8_t mode) {
+    update();
     if (mode == 0) {
         return rawVal;
     } else if (mode == 1) {
