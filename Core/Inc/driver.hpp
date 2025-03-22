@@ -9,7 +9,7 @@ class Driver {
     ~Driver();
 
     void init();
-    void driveSquareWave(float voltage, float phase);
+    void driveSquareWave(float voltage, uint16_t step);
     void driveSinWave(float voltage, float phase);
     void freeWheel();
 

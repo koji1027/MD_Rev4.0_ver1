@@ -49,53 +49,74 @@ void Driver::drive(float voltages[3]) {
     __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty[5]);
 }
 
-void Driver::driveSquareWave(float voltage, float phase) {
-    phase = fmodf(phase, TWO_PI);
-    if (phase < 0) {
-        phase += TWO_PI;
-    }
-    float voltages[3] = {999, 999, 999};
-    if (phase >= 0 && phase < PI_3) {  // A -> B
-        voltages[0] = voltage;
-        voltages[1] = 0;
-    } else if (phase >= PI_3 && phase < TWO_PI_3) {  // A -> C
-        voltages[0] = voltage;
-        voltages[2] = 0;
-    } else if (phase >= TWO_PI_3 && phase < PI) {  // B -> C
-        voltages[1] = voltage;
-        voltages[2] = 0;
-    } else if (phase >= PI && phase < FOUR_PI_3) {  // B -> A
-        voltages[1] = voltage;
-        voltages[0] = 0;
-    } else if (phase >= FOUR_PI_3 && phase < FIVE_PI_3) {  // C -> A
-        voltages[2] = voltage;
-        voltages[0] = 0;
-    } else {  // C -> B
-        voltages[2] = voltage;
-        voltages[1] = 0;
-    }
+void Driver::driveSquareWave(float voltage, uint16_t step) {
+    step %= 6;
 
-    int16_t duty[6];
-    for (int i = 0; i < 3; i++) {
-        if (voltages[i] == 999) {
-            duty[2 * i] = 0;
-            duty[2 * i + 1] = MAX_DUTY;
-        } else {
-            if (voltages[i] < 0) {
-                voltages[i] = 0;
-            } else if (voltages[i] > MAX_VOLTAGE) {
-                voltages[i] = MAX_VOLTAGE;
-            }
-            duty[2 * i] = voltages[i] / MAX_VOLTAGE * MAX_DUTY;
-            duty[2 * i + 1] = duty[2 * i];
-        }
+    uint16_t duty = voltage / MAX_VOLTAGE * MAX_DUTY;
+
+    switch (step) {
+        case 0:  // A -> B
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, duty);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, duty);
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, 0);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1000);
+            break;
+
+        case 1:  // A -> C
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, duty);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, duty);
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, 0);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 1000);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
+            break;
+
+        case 2:  // B -> C
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, 0);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1000);
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, duty);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, duty);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
+            break;
+
+        case 3:  // B -> A
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, 0);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, duty);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, duty);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1000);
+            break;
+
+        case 4:  // C -> A
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, 0);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, 0);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 1000);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, duty);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty);
+            break;
+
+        case 5:  // C -> B
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, 0);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1000);
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, 0);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, duty);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty);
+            break;
+
+        default:
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, 0);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1000);
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, 0);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 1000);
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0);
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1000);
     }
-    __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, duty[0]);
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, duty[1]);
-    __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, duty[2]);
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, duty[3]);
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, duty[4]);
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty[5]);
 }
 
 void Driver::driveSinWave(float voltage, float phase) {

@@ -45,6 +45,12 @@
 #define BATTERY_VOLTAGE 8.0f
 #define MAX_DUTY 1000
 #define MOTOR_POLES_NUM 7
+#define CURRENT_SENSE_ADC_RES 16384
+#define CURRENT_SENSE_ADC_REF_VOLTAGE 3.3f
+#define CURRENT_SENSE_AMP_GAIN 100
+#define CURRENT_SENSE_SHUNT_RESISTANCE 0.003f
+#define CONTROL_PERIOD 500  // us
+#define DEBUG_PERIOD 1000   // us
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -67,7 +73,7 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 asm(".global _printf_float");
-Motor motor(ENC_RES, BATTERY_VOLTAGE, MAX_DUTY, MOTOR_POLES_NUM);
+Motor motor(ENC_RES, BATTERY_VOLTAGE, MAX_DUTY, MOTOR_POLES_NUM, CURRENT_SENSE_ADC_RES, CURRENT_SENSE_ADC_REF_VOLTAGE, CURRENT_SENSE_AMP_GAIN, CURRENT_SENSE_SHUNT_RESISTANCE);
 /* USER CODE END 0 */
 
 /**
@@ -113,7 +119,8 @@ int main(void) {
     fastCosfInit();
 
     motor.init();
-    motor.driver->freeWheel();
+    HAL_Delay(500);
+    motor.timerStart();
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -122,16 +129,6 @@ int main(void) {
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
-        float elecAngle = motor.getElecAngle();
-        uint16_t encVal = motor.enc->getVal(1);
-        float phase = motor.getPhase();
-        // motor.invertTurn();
-        motor.driver->driveSinWave(1.0f, phase);
-
-        char msg[200];
-        uint8_t len = sprintf(msg, "encVal: %d, elecAngle: %f\n", encVal, elecAngle);
-        HAL_UART_Transmit_DMA(&huart2, (uint8_t *)msg, len);
-        HAL_Delay(1);
     }
     /* USER CODE END 3 */
 }
@@ -179,7 +176,39 @@ void SystemClock_Config(void) {
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+    if (htim->Instance == TIM15) {  // 10us
+        static uint64_t time_us = 0;
+        static uint16_t controlCnt = 0;
+        if (controlCnt * 10 == CONTROL_PERIOD) {
+            float elecAngle = motor.getElecAngle();
+            uint16_t encVal = motor.enc->getVal(1);
+            float phase = motor.getPhase();
+            motor.setTurn(0);
+            motor.driver->driveSinWave(0.5f, phase);
+            time_us += CONTROL_PERIOD;
+            motor.calcRpm(time_us);
+            controlCnt = 0;
+        }
+        controlCnt++;
+    }
+    if (htim->Instance == TIM16) {  // 1ms
+        static uint16_t debugCnt = 0;
+        if (debugCnt * 1000 == DEBUG_PERIOD) {
+            float elecAngle = motor.getElecAngle();
+            float phase = motor.getPhase();
+            float rpm = motor.getRpm();
 
+            char msg[1000];
+            uint16_t len = sprintf(msg, "rpm: %f\n", rpm);
+            // HAL_UART_Transmit_DMA(&huart2, (uint8_t *)msg, len);
+            debugCnt = 0;
+        }
+        debugCnt++;
+    }
+    if (htim->Instance == TIM17) {  // 1s
+    }
+}
 /* USER CODE END 4 */
 
 /**

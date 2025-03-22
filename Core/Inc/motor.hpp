@@ -1,14 +1,22 @@
 #ifndef MOTOR_HPP
 #define MOTOR_HPP
 
-#include <memory>
+#include <stdio.h>
 
+#include <algorithm>
+#include <memory>
+#include <vector>
+
+#include "current_sensor.hpp"
 #include "driver.hpp"
 #include "enc.hpp"
 #include "math.hpp"
+#include "tim.h"
+#include "usart.h"
 
-#define CALIBRATION_SAMPLE_NUM 5
-#define ADVANCED_ANGLE PI * 10.0f / 24.0f
+#define ADVANCED_ANGLE PI_2
+#define RPM_MOVING_AVERAGE_SAMPLE_NUM 5
+#define MOTOR_CALIBRATION_SAMPLE_NUM 5
 
 class Motor {
    private:
@@ -21,23 +29,28 @@ class Motor {
     float elecAngle;
     float phase;
     bool turn;
+    float rpm;
 
-    void motorCalibrate();
     void calcElecAngle();
     void calcPhase(bool turn);
+    void motorCalibrate();
 
    public:
-    Motor(uint16_t encRes, float batteryVoltage, uint16_t maxDuty, uint8_t motorPolesNum);
+    Motor(uint16_t encRes, float batteryVoltage, uint16_t maxDuty, uint8_t motorPolesNum, uint16_t currentAdcRes, float currentAdcRefVoltage, uint8_t currentAmpGain, float currentShuntResistance);
     ~Motor();
 
     std::unique_ptr<Encoder> enc;
     std::unique_ptr<Driver> driver;
+    std::unique_ptr<CurrentSensor> currentSensor;
 
     void init();
+    void timerStart();
     void release();
-    void invertTurn();
+    void setTurn(bool turn);
     float getElecAngle();
     float getPhase();
+    void calcRpm(uint64_t time_us);  // us
+    float getRpm();
 };
 
 #endif
