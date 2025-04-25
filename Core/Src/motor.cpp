@@ -19,35 +19,48 @@ void Motor::motorCalibrate() {
     enc->setOffset(0);
     uint32_t encRawValSum = 0;
     uint16_t encRawValArray[6 * MOTOR_POLES_NUM * MOTOR_CALIBRATION_SAMPLE_NUM];
+    uint16_t encRawValIndex = 0;
     for (uint8_t i = 0; i < 6 * MOTOR_POLES_NUM; i++) {
         driver->driveSquareWave(2.0f, i);
         HAL_Delay(20);
     }
     for (uint8_t i = 0; i < MOTOR_CALIBRATION_SAMPLE_NUM; i++) {
-        for (uint8_t j = 0; j < MOTOR_POLES_NUM; j++) {
+        for (uint8_t j = 0; j < 4; j++) {
+            driver->driveSquareWave(2.0f, j);
+            HAL_Delay(20);
+            encRawValArray[encRawValIndex++] = enc->getVal(0);
+        }
+        encRawValSum += enc->getVal(0);
+        driver->driveSquareWave(2.0f, 4);
+        HAL_Delay(20);
+        encRawValArray[encRawValIndex++] = enc->getVal(0);
+        encRawValSum += enc->getVal(0);
+        driver->driveSquareWave(2.0f, 5);
+        HAL_Delay(20);
+        encRawValArray[encRawValIndex++] = enc->getVal(0);
+        for (uint8_t j = 0; j < MOTOR_POLES_NUM - 1; j++) {
             for (uint8_t k = 0; k < 6; k++) {
                 driver->driveSquareWave(2.0f, k);
                 HAL_Delay(20);
-                encRawValArray[i * 6 * MOTOR_POLES_NUM + j * 6 + k] = enc->getVal(0);
-                if ((i % 6 == 3 || i % 6 == 4) && j == MOTOR_POLES_NUM / 2) {
-                    encRawValSum += encRawValArray[i * 6 * MOTOR_POLES_NUM + j * 6 + k];
-                }
-                HAL_Delay(20);
+                encRawValArray[encRawValIndex++] = enc->getVal(0);
             }
         }
     }
     uint16_t encRawValOffset = encRawValSum / (2 * MOTOR_CALIBRATION_SAMPLE_NUM);
-    // for (uint16_t i = 0; i < 6 * MOTOR_POLES_NUM * MOTOR_CALIBRATION_SAMPLE_NUM; i++) {
-    //     char msg[1000];
-    //     uint16_t encRawVal = encRawValArray[i];
-    //     int32_t encValOffseted = (int32_t)encRawVal - (int32_t)encRawValOffset;
-    //     if (encValOffseted < 0) {
-    //         encValOffseted += ENC_RES;
-    //     }
-    //     uint8_t len = sprintf(msg, "%d,%d,%d\n", i, encRawVal, (uint16_t)encValOffseted);
-    //     HAL_UART_Transmit_DMA(&huart2, (uint8_t *)msg, len);
-    //     HAL_Delay(10);
-    // }
+    for (uint16_t i = 0; i < 6 * MOTOR_POLES_NUM * MOTOR_CALIBRATION_SAMPLE_NUM; i++) {
+        char msg[1000];
+        uint16_t encRawVal = encRawValArray[i];
+        int32_t encValOffseted = (int32_t)encRawVal - (int32_t)encRawValOffset;
+        if (encValOffseted < 0) {
+            encValOffseted += ENC_RES;
+        }
+        uint8_t len = sprintf(msg, "%d,%d,%d\n", i, encRawVal, (uint16_t)encValOffseted);
+        // HAL_UART_Transmit_DMA(&huart2, (uint8_t *)msg, len);
+        HAL_Delay(10);
+    }
+    char msg[1000];
+    uint8_t len = sprintf(msg, "offset: %d\n", encRawValOffset);
+    HAL_UART_Transmit_DMA(&huart2, (uint8_t *)msg, len);
     driver->freeWheel();
     enc->setOffset(encRawValOffset);
     HAL_Delay(200);
@@ -56,7 +69,8 @@ void Motor::motorCalibrate() {
 void Motor::init() {
     this->enc->init();
     this->driver->init();
-    motorCalibrate();
+    // motorCalibrate();
+    this->enc->setOffset(716);
     this->driver->freeWheel();
     HAL_Delay(200);
     this->currentSensor->init();

@@ -14,7 +14,7 @@
 #include "tim.h"
 #include "usart.h"
 
-#define ADVANCED_ANGLE PI_2
+#define ADVANCED_ANGLE PI
 #define RPM_MOVING_AVERAGE_SAMPLE_NUM 5
 #define MOTOR_CALIBRATION_SAMPLE_NUM 5
 

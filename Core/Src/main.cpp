@@ -42,7 +42,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define ENC_RES 4096
-#define BATTERY_VOLTAGE 8.0f
+#define BATTERY_VOLTAGE 19.0f
 #define MAX_DUTY 1000
 #define MOTOR_POLES_NUM 7
 #define CURRENT_SENSE_ADC_RES 16384
@@ -177,6 +177,8 @@ void SystemClock_Config(void) {
 
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+    static float vol = 0.0f;
+    static bool sign = true;
     if (htim->Instance == TIM15) {  // 10us
         static uint64_t time_us = 0;
         static uint16_t controlCnt = 0;
@@ -185,8 +187,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             uint16_t encVal = motor.enc->getVal(1);
             float phase = motor.getPhase();
             motor.setTurn(0);
-            motor.driver->driveSinWave(0.5f, phase);
+            motor.driver->driveSinWave(vol, phase);
             time_us += CONTROL_PERIOD;
+            char msg[1000];
+            uint16_t len = sprintf(msg, "%d,%f,%f\n", encVal, elecAngle, phase);
+            // HAL_UART_Transmit_DMA(&huart2, (uint8_t *)msg, len);
             motor.calcRpm(time_us);
             controlCnt = 0;
         }
@@ -207,6 +212,21 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         debugCnt++;
     }
     if (htim->Instance == TIM17) {  // 1s
+        if (sign) {
+            vol += 0.25f;
+            if (vol >= 3.0f) {
+                sign = false;
+            }
+        }
+        if (!sign) {
+            vol -= 0.25f;
+            if (vol <= 0.0f) {
+                sign = true;
+            }
+        }
+        char msg[1000];
+        uint16_t len = sprintf(msg, "vol: %f\n", vol);
+        HAL_UART_Transmit_DMA(&huart2, (uint8_t *)msg, len);
     }
 }
 /* USER CODE END 4 */
